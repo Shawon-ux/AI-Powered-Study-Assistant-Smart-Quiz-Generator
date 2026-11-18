@@ -13,7 +13,7 @@ export default function useLoad(fn, deps) {
 }
 
 export function Status({ loading, error, label = "Generating with AI… this can take a moment" }) {
-  if (loading) return <p className="text-slate-500 animate-pulse">{label}</p>;
-  if (error) return <p className="text-red-600">Error: {error}</p>;
+  if (loading) return <div className="card p-8 flex items-center justify-center gap-3 muted"><span className="spinner" />{label}</div>;
+  if (error) return <div role="alert" className="card p-5" style={{ color: "var(--bad)", background: "var(--bad-soft)" }}>⚠️ {error}</div>;
   return null;
 }

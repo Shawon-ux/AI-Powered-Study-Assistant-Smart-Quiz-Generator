@@ -11,7 +11,6 @@ export default function Upload({ onUploaded }) {
     setBusy(true); setMsg(null);
     try {
       const d = await api.upload(file);
-      if (d.truncated) setMsg("Document was very long and was truncated.");
       onUploaded(d);
     } catch (e) { setMsg(e.message); }
     setBusy(false);
@@ -22,11 +21,13 @@ export default function Upload({ onUploaded }) {
       onDragOver={(e) => { e.preventDefault(); setOver(true); }}
       onDragLeave={() => setOver(false)}
       onDrop={(e) => { e.preventDefault(); setOver(false); handle(e.dataTransfer.files[0]); }}
-      className={`block border-2 border-dashed rounded-lg p-8 text-center cursor-pointer ${over ? "border-indigo-500 bg-indigo-50" : "border-slate-300 bg-white"}`}>
-      <input type="file" className="hidden" accept=".pdf,.docx,.txt,.md"
-             onChange={(e) => handle(e.target.files[0])} />
-      {busy ? "Uploading…" : "Drop a PDF, DOCX, TXT or MD file here, or click to browse"}
-      {msg && <p className="text-amber-700 mt-2 text-sm">{msg}</p>}
+      className="card block border-2 !border-dashed p-12 text-center cursor-pointer transition"
+      style={{ borderColor: over ? "var(--brand)" : "var(--border)", background: over ? "var(--brand-soft)" : undefined }}>
+      <input type="file" className="hidden" accept=".pdf,.docx,.txt,.md" onChange={(e) => handle(e.target.files[0])} />
+      <div className="text-5xl mb-3">{busy ? <span className="spinner !w-8 !h-8 inline-block" /> : "📥"}</div>
+      <p className="font-semibold">{busy ? "Reading your file…" : "Drop a file here, or click to browse"}</p>
+      <p className="muted text-sm mt-1">PDF, DOCX, TXT or MD · up to 20 MB</p>
+      {msg && <p role="alert" className="mt-3 text-sm" style={{ color: "var(--bad)" }}>{msg}</p>}
     </label>
   );
 }

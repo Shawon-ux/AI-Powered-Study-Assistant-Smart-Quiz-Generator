@@ -115,3 +115,25 @@ def make_quiz(chunks: list[str], n: int = 10) -> list[Question]:
                       f"answer is wrong. Material:\n\n{c}")
         qs += r.questions
     return qs[:n]
+
+
+def _ask_text(system: str, prompt: str, model: str = FAST) -> str:
+    if GROQ:
+        resp = client.chat.completions.create(
+            model=model, max_tokens=1024,
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}])
+        return (resp.choices[0].message.content or "").strip()
+    resp = client.messages.create(model=model, max_tokens=1024, system=system,
+                                  messages=[{"role": "user", "content": prompt}])
+    return resp.content[0].text.strip()
+
+
+def answer(chunks: list[str], question: str) -> str:
+    """Answer a question using the most keyword-relevant chunks of the document."""
+    words = {w for w in re.findall(r"\w{3,}", question.lower())}
+    ranked = sorted(chunks, key=lambda c: -sum(c.lower().count(w) for w in words))[:3]
+    ctx = "\n\n---\n\n".join(ranked)
+    return _ask_text(
+        "You are a helpful tutor. Answer ONLY from the provided study material. "
+        "If the answer is not in it, say so. Be concise and clear.",
+        f"Study material:\n{ctx}\n\nQuestion: {question}")
