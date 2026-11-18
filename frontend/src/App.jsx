@@ -5,6 +5,8 @@ import Dashboard from "./components/Dashboard";
 import DocView from "./components/DocView";
 import Flashcards from "./components/Flashcards";
 import Upload from "./components/Upload";
+import Profile from "./components/Profile";
+import Avatar from "./components/Avatar";
 
 function useTheme() {
   const [dark, setDark] = useState(() => {
@@ -35,11 +37,11 @@ export default function App() {
 
   if (checking) return <div className="min-h-screen flex items-center justify-center"><span className="spinner" /></div>;
   if (!user) return <AuthPage onAuth={setUser} />;
-  return <Shell user={user} dark={dark} setDark={setDark}
+  return <Shell user={user} setUser={setUser} dark={dark} setDark={setDark}
                 onLogout={async () => { try { await api.logout(); } catch {} setToken(null); setUser(null); }} />;
 }
 
-function Shell({ user, dark, setDark, onLogout }) {
+function Shell({ user, setUser, dark, setDark, onLogout }) {
   const [docs, setDocs] = useState([]);
   const [view, setView] = useState({ page: "dashboard" }); // dashboard | doc | review | upload
   const [menu, setMenu] = useState(false);
@@ -87,13 +89,15 @@ function Shell({ user, dark, setDark, onLogout }) {
           {!docs.length && <p className="text-sm muted px-3">Nothing yet — upload your first file.</p>}
         </div>
 
-        <div className="border-t pt-3 mt-2 flex items-center gap-3" style={{ borderColor: "var(--border)" }}>
-          <div className="w-9 h-9 rounded-full grid place-items-center text-white font-bold shrink-0"
-               style={{ background: "linear-gradient(135deg,var(--brand),var(--brand-2))" }}>{user.name[0]?.toUpperCase()}</div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold truncate">{user.name}</p>
-            <p className="text-xs muted truncate">{user.email}</p>
-          </div>
+        <div className="border-t pt-3 mt-2 flex items-center gap-2" style={{ borderColor: "var(--border)" }}>
+          <button className={`navlink !p-2 flex-1 min-w-0 ${view.page === "profile" ? "active" : ""}`}
+                  onClick={() => go({ page: "profile" })} title="My profile">
+            <Avatar user={user} size={40} />
+            <span className="min-w-0 text-left">
+              <span className="block text-base font-semibold truncate" style={{ color: "var(--text)" }}>{user.name}</span>
+              <span className="block text-xs muted">My profile</span>
+            </span>
+          </button>
           <button className="btn !p-2 hidden lg:inline-flex" onClick={() => setDark(!dark)} aria-label="Toggle theme">{dark ? "☀️" : "🌙"}</button>
           <button className="btn !p-2" onClick={onLogout} title="Sign out" aria-label="Sign out">⎋</button>
         </div>
@@ -101,6 +105,7 @@ function Shell({ user, dark, setDark, onLogout }) {
 
       <main className="flex-1 min-w-0 p-5 lg:p-10 max-w-5xl w-full mx-auto">
         {view.page === "dashboard" && <Dashboard user={user} docs={docs} go={go} />}
+        {view.page === "profile" && <Profile user={user} docs={docs} onUser={setUser} />}
         {view.page === "upload" && (
           <div className="fade-up">
             <h1 className="text-2xl font-bold mb-1">Upload material</h1>

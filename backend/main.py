@@ -1,5 +1,6 @@
 import hashlib
 import json
+import re
 from datetime import date, timedelta
 from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -164,7 +165,8 @@ class Login(BaseModel):
 
 
 def _user_json(u: User):
-    return {"id": u.id, "name": u.name, "email": u.email}
+    return {"id": u.id, "name": u.name, "email": u.email, "avatar": u.avatar,
+            "created": u.created.isoformat()}
 
 
 @app.post("/auth/register")
@@ -197,6 +199,64 @@ def me(user: User = Depends(current_user)):
 def logout(token: str = Depends(auth.bearer), s: Session = Depends(get_session)):
     auth.revoke_token(s, token)
     return {"ok": True}
+
+
+class ProfileUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+
+
+class PasswordChange(BaseModel):
+    current: str
+    new: str = Field(min_length=8, max_length=128)
+
+
+class AvatarUpdate(BaseModel):
+    image: str = Field(max_length=400_000)
+
+
+@app.put("/auth/profile")
+def update_profile(p: ProfileUpdate, s: Session = Depends(get_session), user: User = Depends(current_user)):
+    name = p.name.strip()
+    if not name:
+        raise HTTPException(400, "Name cannot be empty")
+    user.name = name
+    s.add(user); s.commit(); s.refresh(user)
+    return _user_json(user)
+
+
+@app.put("/auth/password")
+def change_password(p: PasswordChange, s: Session = Depends(get_session), user: User = Depends(current_user),
+                    token: str = Depends(auth.bearer)):
+    if not auth.verify_pw(p.current, user.salt, user.pw_hash):
+        raise HTTPException(400, "Current password is incorrect")
+    if p.new == p.current:
+        raise HTTPException(400, "New password must be different from the current one")
+    user.salt = auth.new_salt()
+    user.pw_hash = auth.hash_pw(p.new, user.salt)
+    s.add(user)
+    # sign out every other device/session; keep this one
+    keep = auth._th(token)
+    for t in s.exec(select(AuthToken).where(AuthToken.user_id == user.id)).all():
+        if t.token_hash != keep:
+            s.delete(t)
+    s.commit()
+    return {"ok": True}
+
+
+@app.put("/auth/avatar")
+def set_avatar(a: AvatarUpdate, s: Session = Depends(get_session), user: User = Depends(current_user)):
+    if not re.match(r"^data:image/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$", a.image):
+        raise HTTPException(400, "Unsupported image. Use a PNG, JPEG or WebP picture.")
+    user.avatar = a.image
+    s.add(user); s.commit(); s.refresh(user)
+    return _user_json(user)
+
+
+@app.delete("/auth/avatar")
+def remove_avatar(s: Session = Depends(get_session), user: User = Depends(current_user)):
+    user.avatar = None
+    s.add(user); s.commit(); s.refresh(user)
+    return _user_json(user)
 
 
 # ---------- progress ----------

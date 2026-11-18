@@ -12,6 +12,7 @@ class User(SQLModel, table=True):
     email: str = Field(index=True, unique=True)
     salt: str
     pw_hash: str
+    avatar: Optional[str] = None  # small data: URL (resized client-side)
     created: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -72,6 +73,9 @@ def init_db():
     # lightweight migration: older DBs predate Document.user_id
     with engine.begin() as c:
         cols = [r[1] for r in c.execute(text("PRAGMA table_info(document)"))]
+        ucols = [r[1] for r in c.execute(text('PRAGMA table_info("user")'))]
+        if "avatar" not in ucols:
+            c.execute(text('ALTER TABLE "user" ADD COLUMN avatar VARCHAR'))
         if "user_id" not in cols:
             c.execute(text("ALTER TABLE document ADD COLUMN user_id INTEGER"))
 
